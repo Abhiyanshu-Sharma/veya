@@ -64,5 +64,57 @@ class MainWindow(QMainWindow):
         """)
         layout.addWidget(title)
 
+        tagline = QLabel("Your Github workspace")
+        tagline.setStyleSheet("""
+            font-size: 11px;
+            color: #8B949E;
+        """)
+
+        layout.addWidget(tagline)
+        layout.addSpacing(24)
+
+        overview_btn = QPushButton("Overview")
+        overview_btn.setStyleSheet("""
+             QPushButton {
+                background-color: #21262D;
+                color: #E6EDF3;
+                border: 1px solid #30363D;
+                border-radius: 6px;
+                padding: 10px;
+                text-align: left;
+                font-size: 14px;
+            }
+
+            QPushButton:hover {
+                background-color: #292F36;
+            }
+        """)
+        overview_btn.setCheckable(True)
+        overview_btn.setChecked(True)
+
+        layout.addWidget(overview_btn)
+
+        repositories_btn = QPushButton("Repositories")
+        repositories_btn.setCheckable(True)
+        
+        repositories_btn.setStyleSheet("""
+            QPushButton {
+                background-color: transparent;
+                color: #C9D1D9;
+                border: 1px solid transparent;
+                border-radius: 6px;
+                padding: 10px;
+                text-align: left;
+                font-size: 14px;
+            }
+        
+            QPushButton:hover {
+                background-color: #21262D;
+                border: 1px solid #30363D;
+            }
+        """)
+
+        layout.addWidget(repositories_btn)
+
         return sidebar
         
