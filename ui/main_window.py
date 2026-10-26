@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QLabel)
+from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QVBoxLayout, QLabel, QPushButton, QFrame,)
 from PySide6.QtCore import Qt
 
 class MainWindow(QMainWindow):
@@ -12,7 +12,13 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        layout = QVBoxLayout(central_widget)
+        main_layout = QHBoxLayout(central_widget)
+
+        sidebar = self.create_sidebar()
+        main_layout.addWidget(sidebar)
+
+        content_widget = QWidget()
+        layout = QVBoxLayout(content_widget)
         layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         title = QLabel("Veya")
@@ -34,4 +40,29 @@ class MainWindow(QMainWindow):
 
         layout.addWidget(title)
         layout.addWidget(subtitle)
-    
+        main_layout.addWidget(content_widget)
+
+    def create_sidebar(self):
+        sidebar = QFrame()
+        sidebar.setFixedWidth(220)
+
+        sidebar.setStyleSheet("""
+            QFrame {
+                background-color: #161B22;
+                border-right: 1px solid #30363D;
+            }
+        """)
+
+        layout = QVBoxLayout(sidebar)
+        layout.setAlignment(Qt.AlignmentFlag.AlignTop)
+        layout.setContentsMargins(16, 24, 16, 16)
+        title = QLabel("Veya")
+        title.setStyleSheet("""
+            font-size: 22px;
+            font-weight: bold;
+            color: #E6EDF3;
+        """)
+        layout.addWidget(title)
+
+        return sidebar
+        
