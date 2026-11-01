@@ -19,6 +19,7 @@ class OverviewPage(QWidget):
         super().__init__(parent)
 
         self.github_client_id = github_client_id
+        self.auth_worker = None
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(32, 28, 32, 28)
@@ -76,31 +77,24 @@ class OverviewPage(QWidget):
             self.set_github_status("Configuration error", "#F85149")
             return
 
-        if hasattr(self, "auth_worker") and self.auth_worker.isRunning():
+        if self.auth_worker is not None and self.auth_worker.isRunning():
             return
 
         self.auth_dialog = GitHubAuthDialog(self)
 
-        self.auth_worker = GitHubAuthWorker(
-            self.github_client_id,
-            self
-        )
+        self.auth_worker = GitHubAuthWorker(self.github_client_id, self)
 
-        self.auth_worker.device_code_ready.connect(
-            self.auth_dialog.set_device_code
-        )
+        self.auth_dialog.cancel_requested.connect(self.auth_worker.cancel)
 
-        self.auth_worker.authentication_success.connect(
-            self.on_authentication_success
-        )
+        self.auth_worker.device_code_ready.connect(self.auth_dialog.set_device_code)
 
-        self.auth_worker.authentication_failed.connect(
-            self.on_authentication_failed
-        )
+        self.auth_worker.authentication_success.connect(self.on_authentication_success)
 
-        self.auth_worker.finished.connect(
-            self.on_authentication_finished
-        )
+        self.auth_worker.authentication_failed.connect(self.on_authentication_failed)
+
+        self.auth_worker.authentication_cancelled.connect(self.on_authentication_cancelled)
+
+        self.auth_worker.finished.connect(self.on_authentication_finished)
 
         self.auth_dialog.auth_in_progress = True
         self.auth_dialog.set_auth_status("Requesting GitHub verification code...")
@@ -113,10 +107,8 @@ class OverviewPage(QWidget):
     def on_authentication_success(self):
 
         self.auth_dialog.auth_in_progress = False
-        self.auth_dialog.set_auth_status(
-            "GitHub connected successfully!",
-            "#3FB950"
-        )
+        self.auth_dialog.cancel_button.setEnabled(False)
+        self.auth_dialog.set_auth_status("GitHub connected successfully!", "#3FB950")
 
         self.auth_dialog.accept()
 
@@ -126,15 +118,14 @@ class OverviewPage(QWidget):
     def on_authentication_failed(self, message):
 
         self.auth_dialog.auth_in_progress = False
-
-        self.auth_dialog.set_auth_status(
-            f"Authentication failed: {message}",
-            "#F85149"
-        )
+        self.auth_dialog.cancel_button.setEnabled(False)
+        self.auth_dialog.set_auth_status(f"Authentication failed: {message}", "#F85149")
 
 
     def on_authentication_finished(self):
         self.auth_dialog.auth_in_progress = False
+        self.auth_worker.deleteLater()
+        self.auth_worker = None
     
     def load_github_profile(self):
 
@@ -211,6 +202,17 @@ class OverviewPage(QWidget):
             )
 
         print(f"GitHub profile error [{error_type}]: {message}")
+
+    def on_authentication_cancelled(self):
+        self.auth_dialog.auth_in_progress = False
+        self.auth_dialog.cancel_button.setEnabled(False)
+        self.auth_dialog.close()
+    
+        self.set_github_status("Disconnected", "#F85149")
+        self.github_status.reconnect_button.show()
+        self.github_status.logout_button.hide()
+    
+        self.subtitle.setText("Connect your GitHub account to get started.")
 
     def logout_github(self):
 

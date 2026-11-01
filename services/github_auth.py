@@ -14,14 +14,15 @@ def request_device_code(client_id):
     return response.json()
 
 
-def poll_for_access_token(client_id, device_code, interval, expires_in):
+def poll_for_access_token(client_id, device_code, interval, expires_in, cancel_event=None):
     import time
 
     url = "https://github.com/login/oauth/access_token"
     deadline = time.monotonic() + expires_in
 
     while time.monotonic() < deadline:
-        time.sleep(interval)
+        if cancel_event and cancel_event.wait(interval):
+            raise InterruptedError("Authentication was cancelled.")
 
         response = requests.post(
             url,
@@ -34,10 +35,15 @@ def poll_for_access_token(client_id, device_code, interval, expires_in):
             timeout=15,
         )
 
+        if cancel_event and cancel_event.is_set():
+            raise InterruptedError("Authentication was cancelled.")
+
         response.raise_for_status()
         result = response.json()
 
         if "access_token" in result:
+            if cancel_event and cancel_event.is_set():
+                raise InterruptedError("Authentication was cancelled.")
             return result
 
         error = result.get("error")

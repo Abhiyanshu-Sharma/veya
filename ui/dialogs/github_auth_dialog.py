@@ -1,10 +1,12 @@
 
 from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QLineEdit)
-from PySide6.QtCore import Qt, QUrl
+from PySide6.QtCore import Qt, QUrl, Signal
 from PySide6.QtGui import QDesktopServices
 
 
 class GitHubAuthDialog(QDialog):
+
+    cancel_requested = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -76,9 +78,15 @@ class GitHubAuthDialog(QDialog):
 
         self.copy_button = QPushButton("Copy Code")
         self.open_browser_button = QPushButton("Open Browser")
+        self.cancel_button = QPushButton("Cancel")
 
         self.copy_button.clicked.connect(self.copy_code)
         self.open_browser_button.clicked.connect(self.open_browser)
+        self.cancel_button.clicked.connect(self.request_cancellation)
+        
+        action_layout = QHBoxLayout()
+        action_layout.addStretch()
+        action_layout.addWidget(self.cancel_button)
 
         button_layout.addWidget(self.copy_button)
         button_layout.addWidget(self.open_browser_button)
@@ -94,8 +102,15 @@ class GitHubAuthDialog(QDialog):
         layout.addWidget(self.verification_url)
         layout.addWidget(self.user_code)
         layout.addLayout(button_layout)
+
         layout.addStretch()
         layout.addWidget(self.status_label)
+        layout.addLayout(action_layout)
+
+    def request_cancellation(self):
+        self.cancel_button.setEnabled(False)
+        self.set_auth_status("Cancelling authentication...")
+        self.cancel_requested.emit()
 
     def set_device_code(self, device_data):
         self.verification_url.setText(
@@ -126,9 +141,6 @@ class GitHubAuthDialog(QDialog):
     def closeEvent(self, event):
         if getattr(self, "auth_in_progress", False):
             event.ignore()
-            self.set_auth_status(
-                "Authorization is in progress. Please wait..."
-            )
         else:
             event.accept()
     
