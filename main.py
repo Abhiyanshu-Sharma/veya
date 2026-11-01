@@ -22,7 +22,7 @@ def get_github_profile(username):
 
 def main():
     app = QApplication(sys.argv)
-    window = MainWindow()
+    window = MainWindow(GITHUB_CLIENT_ID)
     window.show()
 
     sys.exit(app.exec())

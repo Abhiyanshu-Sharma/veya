@@ -6,8 +6,10 @@ from ui.pages.repositories import RepositoriesPage
 
 class MainWindow(QMainWindow):
     
-    def __init__(self):
+    def __init__(self, github_client_id):
         super().__init__()
+
+        self.github_client_id = github_client_id
 
         self.setWindowTitle("Veya")
         self.resize(1000, 650)
@@ -22,7 +24,7 @@ class MainWindow(QMainWindow):
 
         self.pages = QStackedWidget()
 
-        self.overview_page = OverviewPage()
+        self.overview_page = OverviewPage(github_client_id)
         self.repositories_page = RepositoriesPage()
 
         self.overview_page.load_github_profile()

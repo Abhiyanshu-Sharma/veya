@@ -32,11 +32,28 @@ class GitHubStatus(QWidget):
             }
         """)
 
+        self.logout_button = QPushButton("Logout")
+        self.logout_button.setStyleSheet("""
+            QPushButton {
+                color: #F85149;
+                background-color: transparent;
+                border: none;
+                font-size: 12px;
+                font-weight: bold;
+            }
+
+            QPushButton:hover {
+                color: #FF7B72;
+            }
+        """)
+
         self.reconnect_button.hide()
+        self.logout_button.hide()
 
         layout.addWidget(self.status_label)
         layout.addStretch()
         layout.addWidget(self.reconnect_button)
+        layout.addWidget(self.logout_button)
 
     def set_status(self, message, color):
         self.status_label.setText(f"●  GitHub: {message}")
