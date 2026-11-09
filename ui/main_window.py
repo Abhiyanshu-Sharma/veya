@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QStackedWidget
 from ui.components.sidebar import Sidebar
 from ui.pages.overview import OverviewPage
 from ui.pages.repositories import RepositoriesPage
+from ui.pages.repository_details import RepositoryDetailsPage
 
 class MainWindow(QMainWindow):
     
@@ -26,11 +27,16 @@ class MainWindow(QMainWindow):
 
         self.overview_page = OverviewPage(github_client_id)
         self.repositories_page = RepositoriesPage()
+        self.repository_details_page = RepositoryDetailsPage()
+        
+        self.repository_details_page.back_requested.connect(self.show_repositories)
+        self.repositories_page.repository_selected.connect(self.show_repository_details)
 
         self.overview_page.load_github_profile()
 
         self.pages.addWidget(self.overview_page)
         self.pages.addWidget(self.repositories_page)
+        self.pages.addWidget(self.repository_details_page)
 
         main_layout.addWidget(self.pages)
 
@@ -47,3 +53,7 @@ class MainWindow(QMainWindow):
     def show_repositories(self):
         self.repositories_page.load_repositories()
         self.pages.setCurrentWidget(self.repositories_page)
+
+    def show_repository_details(self, repo):
+        self.repository_details_page.set_repository(repo)
+        self.pages.setCurrentWidget(self.repository_details_page)

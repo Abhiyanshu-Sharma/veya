@@ -1,12 +1,14 @@
 
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QScrollArea
-from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QScrollArea, QPushButton
+from PySide6.QtCore import Qt, Signal
 
 from services.github_repos import get_github_repositories
 from services.token_store import get_token
 
 
 class RepositoriesPage(QWidget):
+
+    repository_selected = Signal(dict)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -80,16 +82,32 @@ class RepositoriesPage(QWidget):
                 widget.deleteLater()
 
         for repo in repositories:
-            repo_label = QLabel(repo["name"])
-            repo_label.setStyleSheet("""
-                padding: 14px;
-                font-size: 15px;
-                color: #E6EDF3;
-                background-color: #161B22;
-                border: 1px solid #30363D;
-                border-radius: 8px;
-            """)
+            repo_button = QPushButton(repo["name"])
+            repo_button.setStyleSheet("""
+                QPushButton {
+                    padding: 14px;
+                    font-size: 15px;
+                    color: #E6EDF3;
+                    background-color: #161B22;
+                    border: 1px solid #30363D;
+                    border-radius: 8px;
+                    text-align: left;
+                }
 
-            self.repository_list.addWidget(repo_label)
+                QPushButton:hover {
+                    background-color: #21262D;
+                    border: 1px solid #58A6FF;
+                }
+
+                QPushButton:pressed {
+                    background-color: #30363D;
+                }
+            """)
+            repo_button.clicked.connect(
+                lambda checked = False, selected_repo = repo:
+                    self.repository_selected.emit(selected_repo)
+            )
+
+            self.repository_list.addWidget(repo_button)
 
         self.repository_list.addStretch()
