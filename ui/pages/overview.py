@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QMessageBox
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 
 from services.token_store import delete_token
 
@@ -14,6 +14,8 @@ from ui.workers.github_auth_worker import GitHubAuthWorker
 
 
 class OverviewPage(QWidget):
+
+    cli_requested = Signal()
 
     def __init__(self, github_client_id, parent=None):
         super().__init__(parent)
@@ -49,6 +51,8 @@ class OverviewPage(QWidget):
             "Work with your repositories directly through a terminal.",
             ">_"
         )
+
+        cli_card.clicked.connect(self.cli_requested.emit)
 
         workspace_layout.addWidget(gui_card, 1)
         workspace_layout.addWidget(cli_card, 1)

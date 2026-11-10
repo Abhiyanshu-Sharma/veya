@@ -1,8 +1,9 @@
-
 from PySide6.QtWidgets import QFrame, QVBoxLayout, QLabel
-
+from PySide6.QtCore import Signal, Qt
 
 class WorkspaceCard(QFrame):
+
+    clicked = Signal()
 
     def __init__(self, title, description, icon_text, parent=None):
         super().__init__(parent)
@@ -57,7 +58,16 @@ class WorkspaceCard(QFrame):
         """)
 
         layout.addWidget(icon_label)
+        icon_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         layout.addWidget(title_label)
+        title_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         layout.addWidget(description_label)
+        description_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         layout.addStretch()
         layout.addWidget(action_label)
+        action_label.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+
+    def mousePressEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            self.clicked.emit()
+        super().mousePressEvent(event)
