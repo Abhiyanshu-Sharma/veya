@@ -26,10 +26,29 @@ class RepositoryDetailsPage(QWidget):
         """)
         self.repository_description.setWordWrap(True)
 
-        self.back_button = QPushButton("← Back to Repositories")
+        self.back_button = QPushButton("←  Repositories")
         self.back_button.clicked.connect(self.back_requested.emit)
 
-        layout.addWidget(self.back_button)
+        self.back_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.back_button.setStyleSheet("""
+            QPushButton {
+                background: transparent;
+                border: none;
+                color: #8B949E;
+                font-size: 13px;
+                text-align: left;
+                padding: 0px;
+            }
+
+            QPushButton:hover {
+                color: #E6EDF3;
+            }
+        """)
+
+        layout.addWidget(
+            self.back_button,
+            alignment=Qt.AlignmentFlag.AlignLeft
+        )
 
         layout.addWidget(self.repository_name)
         layout.addWidget(self.repository_description)
@@ -41,14 +60,14 @@ class RepositoryDetailsPage(QWidget):
                 border: 1px solid #30363D;
                 border-radius: 8px;
             }
-        
+
             QLabel#metadataTitle {
                 font-size: 12px;
                 color: #8B949E;
                 background: transparent;
                 border: none;
             }
-        
+
             QLabel#metadataValue {
                 font-size: 14px;
                 font-weight: bold;
