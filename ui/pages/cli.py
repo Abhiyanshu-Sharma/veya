@@ -1,7 +1,11 @@
 import os
-import ctypes
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit, QLineEdit,)
-from PySide6.QtCore import Qt
+
+from services.cli.parser import parse_command
+from services.cli.dispatcher import CommandDispatcher
+
+from services.cli.basic.commands import BasicCommands
+from services.cli.navigation.commands import NavigationCommands
 
 
 class CLIPage(QWidget):
@@ -15,7 +19,6 @@ class CLIPage(QWidget):
             os.path.join(os.path.dirname(__file__), "../..")
         )
 
-        self.current_directory = self.default_directory
 
         # Main layout
         self.layout = QVBoxLayout(self)
@@ -88,13 +91,18 @@ class CLIPage(QWidget):
         self.layout.addWidget(self.command_input)
         self.command_input.returnPressed.connect(self.execute_command)
 
+        self.basic_commands = BasicCommands(self.output)
+        self.navigation = NavigationCommands(self.default_directory)
+
         # Command registry
         self.commands = {
-            "help": self.help_command,
-            "clear": self.clear_command,
-            "pwd": self.pwd_command,
-            "cd": self.cd_command,
+            "help": self.basic_commands.help,
+            "clear": self.basic_commands.clear,
+            "pwd": self.navigation.pwd,
+            "cd": self.navigation.cd,
         }
+
+        self.dispatcher = CommandDispatcher(self.commands)
 
         # Initial welcome
         self.show_welcome()
@@ -114,12 +122,10 @@ class CLIPage(QWidget):
 Welcome to Veya CLI
 Type 'help' to see available commands.
 """
-
         self.output.setPlainText(welcome_text)
 
-    
-    def execute_command(self):
 
+    def execute_command(self):
         command = self.command_input.text().strip()
 
         if not command:
@@ -128,7 +134,7 @@ Type 'help' to see available commands.
         self.output.append(f"veya> {command}")
 
         try:
-            parts = self.parse_command(command)
+            parts = parse_command(command)
         except (ValueError, OSError):
             self.output.append("Error: Invalid command syntax.")
             self.command_input.clear()
@@ -138,100 +144,22 @@ Type 'help' to see available commands.
             self.command_input.clear()
             return
 
+        command_found, result = self.dispatcher.execute(parts)
+
         command_name = parts[0].lower()
-        arguments = parts[1:]
 
-        command_function = self.commands.get(command_name)
+        if not command_found:
+            self.output.append(
+                f"Command not found: {command_name}"
+            )
 
-        if command_function:
-            command_function(arguments)
-        else:
-            self.output.append(f"Command not found: {command_name}")
+        elif command_name == "pwd":
+            self.output.append(result)
+
+        elif command_name == "cd":
+            success, message = result
+
+            if not success:
+                self.output.append(message)
 
         self.command_input.clear()
-
-    
-    def help_command(self, arguments=None):
-
-        self.output.append("""
-Available commands:
-
-  help    Show available commands
-  clear   Clear terminal output
-  pwd     Display current working directory
-  cd      Change current working directory
-""")
-
-    def clear_command(self, arguments=None):
-        self.output.clear()
-
-    def pwd_command(self, arguments=None):
-        self.output.append(self.current_directory)
-
-    def cd_command(self, arguments=None):
-
-        if not arguments:
-            self.current_directory = self.default_directory
-            return
-
-        if len(arguments) > 1:
-            self.output.append("Error: cd accepts only one path.")
-            return
-
-        target_path = arguments[0]
-
-        if os.path.isabs(target_path):
-            new_path = os.path.normpath(target_path)
-        else:
-            new_path = os.path.normpath(
-                os.path.join(self.current_directory, target_path)
-            )
-
-        if not os.path.exists(new_path):
-            self.output.append(
-                f"Error: Directory not found: {target_path}"
-            )
-            return
-
-        if not os.path.isdir(new_path):
-            self.output.append(
-                f"Error: Not a directory: {target_path}"
-            )
-            return
-
-        self.current_directory = new_path
-
-    def parse_command(self, command):
-
-        shell32 = ctypes.WinDLL("shell32", use_last_error=True)
-        kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-
-        command_line_to_argv = shell32.CommandLineToArgvW
-        command_line_to_argv.argtypes = [
-            ctypes.c_wchar_p,
-            ctypes.POINTER(ctypes.c_int)
-        ]
-        command_line_to_argv.restype = ctypes.POINTER(ctypes.c_wchar_p)
-
-        local_free = kernel32.LocalFree
-        local_free.argtypes = [ctypes.c_void_p]
-        local_free.restype = ctypes.c_void_p
-
-        argc = ctypes.c_int()
-
-        argv = command_line_to_argv(
-            command,
-            ctypes.byref(argc)
-        )
-
-        if not argv:
-            raise ctypes.WinError(ctypes.get_last_error())
-
-        try:
-            return [
-                argv[index]
-                for index in range(argc.value)
-            ]
-
-        finally:
-            local_free(ctypes.cast(argv, ctypes.c_void_p))
