@@ -100,6 +100,7 @@ class CLIPage(QWidget):
             "clear": self.basic_commands.clear,
             "pwd": self.navigation.pwd,
             "cd": self.navigation.cd,
+            "ls": self.navigation.ls,
         }
 
         self.dispatcher = CommandDispatcher(self.commands)
@@ -161,5 +162,17 @@ Type 'help' to see available commands.
 
             if not success:
                 self.output.append(message)
+
+        elif command_name == "ls":
+            if isinstance(result, str):
+                self.output.append(result)
+            else:
+                for item in result:
+                    if item.endswith("/"):
+                        self.output.append(
+                            f'<span style="color: #58A6FF;">{item}</span>'
+                        )
+                    else:
+                        self.output.append(item)
 
         self.command_input.clear()
