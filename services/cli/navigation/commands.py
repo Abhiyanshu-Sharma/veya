@@ -1,4 +1,5 @@
 import os
+from datetime import datetime
 
 class NavigationCommands:
 
@@ -38,8 +39,22 @@ class NavigationCommands:
 
     def ls(self, arguments=None):
 
+        arguments = arguments or []
+
+        flags = "".join(
+            arg[1:] for arg in arguments if arg.startswith("-")
+        )
+
+        show_hidden = "a" in flags
+        detailed = "l" in flags
         try:
             items = os.listdir(self.current_directory)
+
+            if not show_hidden:
+                items = [
+                    item for item in items
+                    if not item.startswith(".")
+                ]
 
             directories = []
             files = []
@@ -48,11 +63,41 @@ class NavigationCommands:
                 item_path = os.path.join(self.current_directory, item)
 
                 if os.path.isdir(item_path):
-                    directories.append(item + "/")
+                    directories.append(item)
                 else:
                     files.append(item)
 
-            return sorted(directories, key=str.lower) + sorted(files, key=str.lower)
+            items = (
+                sorted(directories, key=str.lower)
+                + sorted(files, key=str.lower)
+            )
+
+            if not detailed:
+                return [
+                    item + "/" if os.path.isdir(
+                        os.path.join(self.current_directory, item)
+                    ) else item
+                    for item in items
+                ]
+
+            results = []
+
+            for item in items:
+                item_path = os.path.join(self.current_directory, item)
+                stats = os.stat(item_path)
+
+                item_type = "DIR" if os.path.isdir(item_path) else "FILE"
+                size = stats.st_size
+                modified = datetime.fromtimestamp(
+                    stats.st_mtime
+                ).strftime("%Y-%m-%d %H:%M")
+
+                results.append(
+                    f"{item_type:<6} {size:>12} "
+                    f"{modified}  {item}"
+                )
+
+            return results
 
         except OSError as error:
             return f"Error: {error}"

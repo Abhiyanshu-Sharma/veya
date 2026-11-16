@@ -8,10 +8,16 @@ class BasicCommands:
         self.output.append("""
 Available commands:
 
-  help    Show available commands
-  clear   Clear terminal output
-  pwd     Display current working directory
-  cd      Change current working directory
+  help      Show available commands
+  clear     Clear terminal output
+
+Navigation:
+  pwd       Display current directory
+  cd        Change current directory
+  ls        List directory contents
+  ls -a     Include hidden files
+  ls -l     Detailed listing
+  ls -la    Detailed listing with hidden files
 """)
 
     def clear(self, arguments=None):
