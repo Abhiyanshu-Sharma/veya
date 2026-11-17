@@ -7,6 +7,8 @@ from services.cli.dispatcher import CommandDispatcher
 from services.cli.basic.commands import BasicCommands
 from services.cli.navigation.commands import NavigationCommands
 
+from ui.dialogs.workspace_dialog import WorkspaceDialog
+
 
 class CLIPage(QWidget):
 
@@ -36,6 +38,7 @@ class CLIPage(QWidget):
         """)
 
         self.workspace_button = QPushButton("Select Workspace")
+        self.workspace_button.clicked.connect(self.select_workspace)
         self.workspace_button.setStyleSheet("""
             QPushButton {
                 background-color: #21262D;
@@ -176,3 +179,16 @@ Type 'help' to see available commands.
                         self.output.append(item)
 
         self.command_input.clear()
+
+    def select_workspace(self):
+
+        dialog = WorkspaceDialog(self)
+
+        if dialog.exec():
+            self.workspace_path = dialog.workspace_path
+
+            self.navigation.current_directory = self.workspace_path
+
+            self.output.append(
+                f"Workspace selected: {self.workspace_path}"
+            )

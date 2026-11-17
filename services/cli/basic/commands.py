@@ -22,3 +22,4 @@ Navigation:
 
     def clear(self, arguments=None):
         self.output.clear()
+        self.output.setTextColor("#E6EDF3")
