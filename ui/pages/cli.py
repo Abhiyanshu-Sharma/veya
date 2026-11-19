@@ -1,5 +1,6 @@
 import os
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit, QLineEdit,)
+from PySide6.QtCore import Qt, Signal
 
 from services.cli.parser import parse_command
 from services.cli.dispatcher import CommandDispatcher
@@ -11,6 +12,20 @@ from services.cli.git.commands import GitCommands
 
 from ui.dialogs.workspace_dialog import WorkspaceDialog
 
+class CommandInput(QLineEdit):
+
+    tab_pressed = Signal()
+
+    def keyPressEvent(self, event):
+
+        if event.key() == Qt.Key_Tab:
+            self.tab_pressed.emit()
+            return
+
+        super().keyPressEvent(event)
+
+    def focusNextPrevChild(self, next):
+        return False
 
 class CLIPage(QWidget):
 
@@ -79,7 +94,8 @@ class CLIPage(QWidget):
         self.layout.addWidget(self.output, 1)
 
         # Command input
-        self.command_input = QLineEdit()
+        self.command_input = CommandInput()
+        self.command_input.tab_pressed.connect(self.autocomplete)
         self.command_input.setPlaceholderText("Type a command...")
         self.command_input.setStyleSheet("""
             QLineEdit {
@@ -205,6 +221,61 @@ Type 'help' to see available commands.
 
             self.navigation.current_directory = self.workspace_path
 
-            self.output.append(
-                f"Workspace selected: {self.workspace_path}"
-            )
+            self.output.append(f"Workspace selected: {self.workspace_path}")
+
+    def autocomplete(self):
+
+        command = self.command_input.text()
+        if not command:
+            return
+
+        prefix, separator, partial = command.rpartition(" ")
+
+        if not separator:
+            return
+
+        command_parts = prefix.lower()
+
+        if not (
+            command_parts.startswith("cd")
+            or command_parts.startswith("git add")
+            or command_parts.startswith("ls")
+        ):
+            return
+
+        search_directory = os.path.dirname(partial)
+        search_name = os.path.basename(partial)
+
+        search_path = os.path.join(
+            self.navigation.current_directory,
+            search_directory
+        )
+
+        try:
+            matches = [
+                item for item in os.listdir(search_path)
+                if item.lower().startswith(search_name.lower())
+                and (
+                    command_parts.startswith("git add")
+                    or command_parts.startswith("ls")
+                    or os.path.isdir(os.path.join(search_path, item))
+                )
+            ]
+        except OSError:
+            return
+
+        if len(matches) == 1:
+            match = matches[0]
+            full_path = os.path.join(search_path, match)
+            is_directory = os.path.isdir(full_path)
+
+            completed = os.path.join(search_directory, match)
+            if is_directory:
+                completed += os.sep
+            else:
+                completed += " "
+
+            self.command_input.setText(prefix + " " + completed)
+
+        elif len(matches) > 1:
+            self.output.append("  ".join(sorted(matches)))
