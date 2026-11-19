@@ -7,6 +7,8 @@ from services.cli.dispatcher import CommandDispatcher
 from services.cli.basic.commands import BasicCommands
 from services.cli.navigation.commands import NavigationCommands
 
+from services.cli.git.commands import GitCommands
+
 from ui.dialogs.workspace_dialog import WorkspaceDialog
 
 
@@ -96,6 +98,7 @@ class CLIPage(QWidget):
 
         self.basic_commands = BasicCommands(self.output)
         self.navigation = NavigationCommands(self.default_directory)
+        self.git_commands = GitCommands(self.output, self.navigation)
 
         # Command registry
         self.commands = {
@@ -104,6 +107,7 @@ class CLIPage(QWidget):
             "pwd": self.navigation.pwd,
             "cd": self.navigation.cd,
             "ls": self.navigation.ls,
+            "git status": self.git_commands.status,
         }
 
         self.dispatcher = CommandDispatcher(self.commands)
@@ -177,6 +181,11 @@ Type 'help' to see available commands.
                         )
                     else:
                         self.output.append(item)
+        elif command_name == "git":
+            success, message = result
+
+            if message:
+                self.output.append(message)
 
         self.command_input.clear()
 

@@ -18,6 +18,11 @@ Navigation:
   ls -a     Include hidden files
   ls -l     Detailed listing
   ls -la    Detailed listing with hidden files
+
+Git:
+  git status    Show working tree status
+  git status -s       Show short working tree status
+  git status --short  Show short working tree status
 """)
 
     def clear(self, arguments=None):
