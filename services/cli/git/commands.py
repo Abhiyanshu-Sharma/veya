@@ -33,3 +33,9 @@ class GitCommands:
             arguments = ["status"]
 
         return self.run_git(arguments)
+
+    def add(self, arguments=None):
+        if not arguments:
+            return False, "Usage: git add <file>"
+
+        return self.run_git(["add"] + arguments)

@@ -108,6 +108,7 @@ class CLIPage(QWidget):
             "cd": self.navigation.cd,
             "ls": self.navigation.ls,
             "git status": self.git_commands.status,
+            "git add": self.git_commands.add,
         }
 
         self.dispatcher = CommandDispatcher(self.commands)
@@ -184,8 +185,14 @@ Type 'help' to see available commands.
         elif command_name == "git":
             success, message = result
 
-            if message:
-                self.output.append(message)
+            if success:
+                self.output.append(
+                    message if message else "Command executed successfully."
+                )
+            else:
+                self.output.append(
+                    f"Error: {message}"
+                )
 
         self.command_input.clear()
 
