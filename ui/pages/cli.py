@@ -1,4 +1,5 @@
 import os
+import shlex
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, QTextEdit, QLineEdit,)
 from PySide6.QtCore import Qt, Signal
 
@@ -125,6 +126,7 @@ class CLIPage(QWidget):
             "ls": self.navigation.ls,
             "git status": self.git_commands.status,
             "git add": self.git_commands.add,
+            "git restore": self.git_commands.restore
         }
 
         self.dispatcher = CommandDispatcher(self.commands)
@@ -226,22 +228,35 @@ Type 'help' to see available commands.
     def autocomplete(self):
 
         command = self.command_input.text()
-        if not command:
+        cursor = self.command_input.cursorPosition()
+
+        try:
+            parts = parse_command(command[:cursor])
+        except (ValueError, OSError):
             return
 
-        prefix, separator, partial = command.rpartition(" ")
-
-        if not separator:
+        if not parts:
             return
 
-        command_parts = prefix.lower()
+        command_name = parts[0].lower()
 
-        if not (
-            command_parts.startswith("cd")
-            or command_parts.startswith("git add")
-            or command_parts.startswith("ls")
-        ):
+        if command_name not in ("cd", "ls", "git"):
             return
+
+        if command_name == "git":
+            if len(parts) < 2:
+                return
+
+            subcommand = parts[1].lower()
+
+            if subcommand == "add":
+                partial = parts[2] if len(parts) > 2 else ""
+            elif subcommand == "restore" and len(parts) >= 3 and parts[2] == "--staged":
+                partial = parts[3] if len(parts) > 3 else ""
+            else:
+                return
+        else:
+            partial = parts[1] if len(parts) > 1 else ""
 
         search_directory = os.path.dirname(partial)
         search_name = os.path.basename(partial)
@@ -255,11 +270,6 @@ Type 'help' to see available commands.
             matches = [
                 item for item in os.listdir(search_path)
                 if item.lower().startswith(search_name.lower())
-                and (
-                    command_parts.startswith("git add")
-                    or command_parts.startswith("ls")
-                    or os.path.isdir(os.path.join(search_path, item))
-                )
             ]
         except OSError:
             return
@@ -267,15 +277,17 @@ Type 'help' to see available commands.
         if len(matches) == 1:
             match = matches[0]
             full_path = os.path.join(search_path, match)
-            is_directory = os.path.isdir(full_path)
 
             completed = os.path.join(search_directory, match)
-            if is_directory:
-                completed += os.sep
-            else:
-                completed += " "
 
-            self.command_input.setText(prefix + " " + completed)
+            if " " in completed:
+                completed = f'"{completed}"'
+            elif os.path.isdir(full_path):
+                completed += os.sep
+                
+            self.command_input.setText(
+                command[:command.rfind(partial)] + completed
+            )
 
         elif len(matches) > 1:
             self.output.append("  ".join(sorted(matches)))

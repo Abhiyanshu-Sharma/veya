@@ -39,3 +39,11 @@ class GitCommands:
             return False, "Usage: git add <file>"
 
         return self.run_git(["add"] + arguments)
+
+    def restore(self, arguments=None):
+        arguments = arguments or []
+
+        if "--staged" not in arguments or len(arguments) < 2:
+            return False, "Usage: git restore --staged <file>"
+
+        return self.run_git(["restore"] + arguments)
