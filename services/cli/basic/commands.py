@@ -23,9 +23,13 @@ Git:
   git status    Show working tree status
   git status -s                 Show short working tree status
   git status --short            Show short working tree status
+
   git add <file>                Stage file or folder changes
   git add .                     Stage all changes
+
   git restore --staged <file>   Unstage file changes
+
+  git commit -m "<msg>"         Commit staged changes with a message
 """)
 
     def clear(self, arguments=None):

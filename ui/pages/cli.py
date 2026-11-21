@@ -126,7 +126,8 @@ class CLIPage(QWidget):
             "ls": self.navigation.ls,
             "git status": self.git_commands.status,
             "git add": self.git_commands.add,
-            "git restore": self.git_commands.restore
+            "git restore": self.git_commands.restore,
+            "git commit": self.git_commands.commit
         }
 
         self.dispatcher = CommandDispatcher(self.commands)

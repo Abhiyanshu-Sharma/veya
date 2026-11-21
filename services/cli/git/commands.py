@@ -47,3 +47,11 @@ class GitCommands:
             return False, "Usage: git restore --staged <file>"
 
         return self.run_git(["restore"] + arguments)
+
+    def commit(self, arguments=None):
+        arguments = arguments or []
+
+        if ("-m" not in arguments and "--message" not in arguments) or len(arguments) < 2:
+            return False, 'Usage: git commit -m "message"'
+
+        return self.run_git(["commit"] + arguments)
