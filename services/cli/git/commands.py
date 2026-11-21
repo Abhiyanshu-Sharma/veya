@@ -17,7 +17,8 @@ class GitCommands:
             )
 
             if result.returncode == 0:
-                return True, result.stdout.strip()
+                output = result.stdout.strip() or result.stderr.strip()
+                return True, output
 
             return False, result.stderr.strip()
 
@@ -55,3 +56,11 @@ class GitCommands:
             return False, 'Usage: git commit -m "message"'
 
         return self.run_git(["commit"] + arguments)
+
+    def push(self, arguments=None):
+        arguments = arguments or []
+        return self.run_git(["push"] + arguments)
+
+    def pull(self, arguments=None):
+        arguments = arguments or []
+        return self.run_git(["pull"] + arguments)

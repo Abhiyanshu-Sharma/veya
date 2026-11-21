@@ -20,7 +20,7 @@ Navigation:
   ls -la    Detailed listing with hidden files
 
 Git:
-  git status    Show working tree status
+  git status                    Show working tree status
   git status -s                 Show short working tree status
   git status --short            Show short working tree status
 
@@ -30,6 +30,10 @@ Git:
   git restore --staged <file>   Unstage file changes
 
   git commit -m "<msg>"         Commit staged changes with a message
+
+  git push                      Push local commits to remote
+  git push -u origin <branch>   Push and set upstream branch
+  git pull                      Pull remote changes into current branch
 """)
 
     def clear(self, arguments=None):
