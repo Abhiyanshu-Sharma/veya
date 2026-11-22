@@ -64,3 +64,29 @@ class GitCommands:
     def pull(self, arguments=None):
         arguments = arguments or []
         return self.run_git(["pull"] + arguments)
+
+    def get_file_changes(self):
+        success, output = self.run_git(["status", "--porcelain"])
+        if not success:
+            return False, output
+
+        staged = []
+        unstaged = []
+
+        for line in output.splitlines():
+            if len(line) < 4:
+                continue
+
+            index_status = line[0]
+            worktree_status = line[1]
+            filepath = line[3:].strip('"')
+
+            if index_status == "?" and worktree_status == "?":
+                unstaged.append(filepath)
+            else:
+                if index_status != " ":
+                    staged.append(filepath)
+                if worktree_status != " ":
+                    unstaged.append(filepath)
+
+        return True, {"staged": staged, "unstaged": unstaged}

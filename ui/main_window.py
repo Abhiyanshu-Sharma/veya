@@ -6,6 +6,7 @@ from ui.pages.repositories import RepositoriesPage
 from ui.pages.repository_details import RepositoryDetailsPage
 
 from ui.pages.cli import CLIPage
+from ui.pages.gui_workspace import GUIWorkspacePage
 
 class MainWindow(QMainWindow):
     
@@ -31,12 +32,17 @@ class MainWindow(QMainWindow):
         self.repositories_page = RepositoriesPage()
         self.repository_details_page = RepositoryDetailsPage()
         self.cli_page = CLIPage()
+        self.gui_workspace = GUIWorkspacePage()
         
         self.repository_details_page.back_requested.connect(self.show_repositories)
         self.repositories_page.repository_selected.connect(self.show_repository_details)
 
         self.overview_page.load_github_profile()
 
+        self.overview_page.gui_requested.connect(
+            lambda: self.pages.setCurrentWidget(self.gui_workspace)
+        )
+        
         self.overview_page.cli_requested.connect(
             lambda: self.pages.setCurrentWidget(self.cli_page)
         )
@@ -45,6 +51,7 @@ class MainWindow(QMainWindow):
         self.pages.addWidget(self.repositories_page)
         self.pages.addWidget(self.repository_details_page)
         self.pages.addWidget(self.cli_page)
+        self.pages.addWidget(self.gui_workspace)
 
         main_layout.addWidget(self.pages)
 

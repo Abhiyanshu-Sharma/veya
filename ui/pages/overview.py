@@ -15,6 +15,7 @@ from ui.workers.github_auth_worker import GitHubAuthWorker
 
 class OverviewPage(QWidget):
 
+    gui_requested = Signal()
     cli_requested = Signal()
 
     def __init__(self, github_client_id, parent=None):
@@ -45,6 +46,8 @@ class OverviewPage(QWidget):
             "Manage your repositories visually through an intuitive interface.",
             "▣"
         )
+
+        gui_card.clicked.connect(self.gui_requested.emit)
 
         cli_card = WorkspaceCard(
             "CLI Workspace",
