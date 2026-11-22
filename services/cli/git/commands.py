@@ -66,27 +66,36 @@ class GitCommands:
         return self.run_git(["pull"] + arguments)
 
     def get_file_changes(self):
-        success, output = self.run_git(["status", "--porcelain"])
-        if not success:
-            return False, output
+        try:
+            result = subprocess.run(
+                ["git", "status", "--porcelain"],
+                cwd=self.navigation.current_directory,
+                capture_output=True,
+                text=True
+            )
+            if result.returncode != 0:
+                return False, result.stderr.strip()
 
-        staged = []
-        unstaged = []
+            staged = []
+            unstaged = []
 
-        for line in output.splitlines():
-            if len(line) < 4:
-                continue
+            for line in result.stdout.splitlines():
+                if len(line) < 4:
+                    continue
 
-            index_status = line[0]
-            worktree_status = line[1]
-            filepath = line[3:].strip('"')
+                index_status = line[0]
+                worktree_status = line[1]
+                filepath = line[3:].strip('"')
 
-            if index_status == "?" and worktree_status == "?":
-                unstaged.append(filepath)
-            else:
-                if index_status != " ":
-                    staged.append(filepath)
-                if worktree_status != " ":
+                if index_status == "?" and worktree_status == "?":
                     unstaged.append(filepath)
+                else:
+                    if index_status != " ":
+                        staged.append(filepath)
+                    if worktree_status != " ":
+                        unstaged.append(filepath)
 
-        return True, {"staged": staged, "unstaged": unstaged}
+            return True, {"staged": staged, "unstaged": unstaged}
+
+        except Exception as error:
+            return False, str(error)
