@@ -106,9 +106,7 @@ class GUIWorkspacePage(QWidget):
         super().__init__(parent)
 
         self.workspace_path = None
-        self.default_directory = os.path.abspath(
-            os.path.join(os.path.dirname(__file__), "../..")
-        )
+        self.default_directory = os.getcwd()
 
         self.navigation = NavigationCommands(self.default_directory)
         self.git_commands = GitCommands(None, self.navigation)
