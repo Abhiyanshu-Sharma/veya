@@ -251,7 +251,12 @@ class GUIWorkspacePage(QWidget):
 
         self.staged_files = []
         self.unstaged_files = []
+
         self.add_files_btn.clicked.connect(self.open_add_dialog)
+        self.restore_btn.clicked.connect(self.open_restore_dialog)
+        self.commit_btn.clicked.connect(self.handle_commit)
+        self.push_btn.clicked.connect(self.handle_push)
+
         self.refresh_status()
 
     def select_workspace(self):
@@ -315,3 +320,56 @@ class GUIWorkspacePage(QWidget):
                 f"Staged {len(files)} file(s)." if success else output
             )
             self.refresh_status()
+
+    def open_restore_dialog(self):
+        if not self.staged_files:
+            self.status_banner.setText("No staged files to restore.")
+            return
+
+        dialog = FilePickerDialog(
+            "Select Staged Files to Restore",
+            "Restore Selected",
+            self.staged_files,
+            self
+        )
+        if dialog.exec():
+            files = dialog.selected_files()
+            if not files:
+                return
+            success, output = self.git_commands.restore(["--staged"] + files)
+            self.status_banner.setText(
+                f"Restored {len(files)} file(s)." if success else output
+            )
+            self.refresh_status()
+
+    def handle_commit(self):
+        message = self.commit_input.toPlainText().strip()
+
+        if not self.staged_files:
+            self.status_banner.setText("Stage at least one file before committing.")
+            return
+
+        if not message:
+            self.status_banner.setText("Enter a commit message first.")
+            return
+
+        success, output = self.git_commands.commit(["-m", message])
+        if success:
+            self.commit_input.clear()
+            self.status_banner.setText("Changes committed successfully.")
+            self.refresh_status()
+        else:
+            self.status_banner.setText(output or "Commit failed.")
+
+    def handle_push(self):
+        self.status_banner.setText("Pushing to remote...")
+        self.push_btn.setEnabled(False)
+
+        success, output = self.git_commands.push()
+        self.push_btn.setEnabled(True)
+
+        if success:
+            self.status_banner.setText("Pushed to remote successfully.")
+            self.refresh_status()
+        else:
+            self.status_banner.setText(output or "Push failed.")
