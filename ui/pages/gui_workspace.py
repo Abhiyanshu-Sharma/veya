@@ -211,10 +211,11 @@ class GUIWorkspacePage(QWidget):
 
         self.add_files_btn = QPushButton("+ Add Files")
         self.restore_btn = QPushButton("Restore")
+        self.refresh_btn = QPushButton("Refresh")
         self.commit_btn = QPushButton("Commit")
         self.push_btn = QPushButton("Push")
 
-        for btn in (self.add_files_btn, self.restore_btn, self.commit_btn, self.push_btn):
+        for btn in (self.add_files_btn, self.restore_btn, self.refresh_btn, self.commit_btn, self.push_btn):
             btn.setStyleSheet("""
                 QPushButton {
                     background-color: #21262D;
@@ -231,6 +232,7 @@ class GUIWorkspacePage(QWidget):
 
         footer_layout.addWidget(self.add_files_btn)
         footer_layout.addWidget(self.restore_btn)
+        footer_layout.addWidget(self.refresh_btn)
         footer_layout.addStretch()
         footer_layout.addWidget(self.commit_btn)
         footer_layout.addWidget(self.push_btn)
@@ -252,6 +254,7 @@ class GUIWorkspacePage(QWidget):
 
         self.add_files_btn.clicked.connect(self.open_add_dialog)
         self.restore_btn.clicked.connect(self.open_restore_dialog)
+        self.refresh_btn.clicked.connect(self.handle_refresh)
         self.commit_btn.clicked.connect(self.handle_commit)
         self.push_btn.clicked.connect(self.handle_push)
 
@@ -371,3 +374,11 @@ class GUIWorkspacePage(QWidget):
             self.refresh_status()
         else:
             self.status_banner.setText(output or "Push failed.")
+
+    def handle_refresh(self):
+        self.refresh_status()
+        self.status_banner.setText("Workspace status refreshed.")
+
+    def showEvent(self, event):
+       super().showEvent(event)
+       self.refresh_status()
