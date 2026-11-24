@@ -8,8 +8,8 @@ from ui.main_window import MainWindow
 from PySide6.QtGui import QIcon
 
 load_dotenv()
-
-GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID")
+DEFAULT_GITHUB_CLIENT_ID = "Ov23liUnqTOHa2OJH7YC"
+GITHUB_CLIENT_ID = os.getenv("GITHUB_CLIENT_ID") or DEFAULT_GITHUB_CLIENT_ID
 
 def resource_path(relative_path):
     base_path = getattr(sys, "_MEIPASS", os.path.abspath("."))
