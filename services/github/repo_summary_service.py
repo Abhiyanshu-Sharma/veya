@@ -11,15 +11,22 @@ class RepoSummaryService:
     def __init__(self):
         self._cache = {}
 
-    def _headers(self):
+    def _headers(self, use_auth=True):
         headers = {
             "Accept": "application/vnd.github+json",
             "User-Agent": "Veya-Desktop-App",
         }
-        token = get_token()
-        if token:
-            headers["Authorization"] = f"Bearer {token}"
+        if use_auth:
+            token = (get_token() or "").strip()
+            if token:
+                headers["Authorization"] = f"Bearer {token}"
         return headers
+
+    def _get(self, url):
+        resp = requests.get(url, headers=self._headers(use_auth=True), timeout=10)
+        if resp.status_code == 401:
+            resp = requests.get(url, headers=self._headers(use_auth=False), timeout=10)
+        return resp
 
     def inspect_repository(self, repo, force_refresh=False):
         full_name = repo.get("full_name")
@@ -38,7 +45,7 @@ class RepoSummaryService:
         tree_items = []
         tree_url = f"{self.BASE_URL}/repos/{full_name}/git/trees/{default_branch}?recursive=1"
         try:
-            tree_resp = requests.get(tree_url, headers=headers, timeout=10)
+            tree_resp = self._get(tree_url)
             if tree_resp.status_code == 200:
                 tree_items = tree_resp.json().get("tree", [])
         except requests.RequestException:
@@ -48,7 +55,7 @@ class RepoSummaryService:
         readme_text = ""
         readme_url = f"{self.BASE_URL}/repos/{full_name}/readme"
         try:
-            readme_resp = requests.get(readme_url, headers=headers, timeout=10)
+            readme_resp = self._get(readme_url)
             if readme_resp.status_code == 200:
                 encoded = readme_resp.json().get("content", "")
                 if encoded:
@@ -73,7 +80,7 @@ class RepoSummaryService:
                 found_manifest = candidate
                 content_url = f"{self.BASE_URL}/repos/{full_name}/contents/{candidate}"
                 try:
-                    c_resp = requests.get(content_url, headers=headers, timeout=10)
+                    c_resp = self._get(content_url)
                     if c_resp.status_code == 200:
                         encoded = c_resp.json().get("content", "")
                         if encoded:
@@ -81,6 +88,16 @@ class RepoSummaryService:
                 except requests.RequestException:
                     pass
                 break
+
+        # 4. Fetch language byte counts (for pie chart)
+        languages_map = {}
+        lang_url = f"{self.BASE_URL}/repos/{full_name}/languages"
+        try:
+            lang_resp = self._get(lang_url)
+            if lang_resp.status_code == 200:
+                languages_map = lang_resp.json()
+        except requests.RequestException:
+            pass
 
         inspection = {
             "repo": repo,
@@ -90,6 +107,7 @@ class RepoSummaryService:
             "readme_text": readme_text,
             "manifest_name": found_manifest,
             "manifest_content": manifest_content,
+            "languages_map": languages_map
         }
         self._cache[full_name] = inspection
         return inspection
@@ -357,3 +375,180 @@ class RepoSummaryService:
         if first_word.isupper():
             return text
         return text[0].lower() + text[1:]
+
+    def _compute_language_percentages(self, languages_map, paths, fallback_lang):
+        total_bytes = sum(languages_map.values()) if languages_map else 0
+        if total_bytes > 0:
+            result = []
+            for lang, byte_count in sorted(languages_map.items(), key=lambda x: x[1], reverse=True):
+                pct = round((byte_count / total_bytes) * 100, 1)
+                if pct >= 0.5:
+                    result.append({"language": lang, "percent": pct})
+            if result:
+                return result
+
+        # Fallback: count code files by extension from the already-fetched tree
+        ext_map = {
+            ".py": "Python", ".js": "JavaScript", ".jsx": "JavaScript",
+            ".ts": "TypeScript", ".tsx": "TypeScript", ".html": "HTML",
+            ".css": "CSS", ".java": "Java", ".cpp": "C++", ".c": "C",
+            ".go": "Go", ".rs": "Rust", ".dart": "Dart",
+        }
+        counts = {}
+        for p in paths:
+            filename = p.split("/")[-1]
+            if "." in filename:
+                ext = "." + filename.rsplit(".", 1)[1].lower()
+                if ext in ext_map:
+                    lang = ext_map[ext]
+                    counts[lang] = counts.get(lang, 0) + 1
+
+        total_files = sum(counts.values())
+        if total_files > 0:
+            return [
+                {"language": lang, "percent": round((cnt / total_files) * 100, 1)}
+                for lang, cnt in sorted(counts.items(), key=lambda x: x[1], reverse=True)
+            ]
+
+        return [{"language": fallback_lang or "Unknown", "percent": 100.0}]
+
+    def _detect_entry_points(self, paths):
+        candidates = {
+            "main.py", "app.py", "run.py", "manage.py", "cli.py",
+            "index.js", "index.ts", "server.js", "app.js",
+            "src/main.jsx", "src/main.tsx", "src/App.jsx", "src/App.tsx",
+            "main.go", "src/main.rs", "lib/main.dart", "Dockerfile",
+        }
+        found = []
+        for p in paths:
+            if p in candidates or p.split("/")[-1] in {"main.py", "app.py", "manage.py"}:
+                if p not in found:
+                    found.append(p)
+        return found[:5]
+
+    def _extract_dependencies(self, manifest_name, manifest_content, readme_text):
+        deps = []
+
+        if manifest_name == "requirements.txt":
+            for line in manifest_content.splitlines():
+                clean = line.strip()
+                if clean and not clean.startswith(("#", "-")):
+                    pkg = re.split(r"[=<>!~;\[]", clean)[0].strip()
+                    if pkg and pkg not in deps:
+                        deps.append(pkg)
+
+        elif manifest_name == "package.json":
+            try:
+                import json
+                pkg_data = json.loads(manifest_content)
+                for block in ("dependencies", "devDependencies"):
+                    for pkg in pkg_data.get(block, {}).keys():
+                        if pkg not in deps:
+                            deps.append(pkg)
+            except Exception:
+                pass
+
+        # Fallback: check README for well-known libraries when no manifest exists
+        if not deps and readme_text:
+            known_tools = [
+                "PySide6", "PyQt6", "FastAPI", "Flask", "Django", "React",
+                "Next.js", "Node.js", "Express", "OpenCV", "keyring", "PyInstaller",
+            ]
+            lower_readme = readme_text.lower()
+            for tool in known_tools:
+                if tool.lower() in lower_readme and tool not in deps:
+                    deps.append(tool)
+
+        return deps
+
+    def _build_module_guide(self, paths):
+        folder_roles = {
+            "ui": "Presentation layer — application windows, pages, themes, and reusable interface widgets.",
+            "services": "Core business logic — API clients, credential storage, settings persistence, and system integrations.",
+            "components": "Reusable UI building blocks shared across multiple views or screens.",
+            "pages": "Top-level screens and route views presented to the user.",
+            "api": "External API handlers, endpoint definitions, and network communication.",
+            "models": "Data structures, schemas, and domain entity definitions.",
+            "utils": "Shared helper functions, formatters, and cross-cutting utilities.",
+            "tests": "Automated test suites verifying core logic and preventing regressions.",
+            "assets": "Static resources including icons, images, and visual media.",
+            "src": "Primary source directory containing application logic and components.",
+        }
+
+        grouped = {}
+        root_files = []
+        for p in paths:
+            if "/" in p:
+                top = p.split("/")[0]
+                if not top.startswith("."):
+                    grouped.setdefault(top, []).append(p)
+            else:
+                root_files.append(p)
+
+        guide = []
+        if root_files:
+            guide.append({
+                "folder": "/ (Root)",
+                "file_count": len(root_files),
+                "role": "Application entry point, documentation, and build/environment configuration.",
+                "key_files": root_files[:6],
+            })
+
+        for folder, files in sorted(grouped.items(), key=lambda x: len(x[1]), reverse=True):
+            role = folder_roles.get(
+                folder.lower(),
+                f"Feature module containing {len(files)} project {'file' if len(files) == 1 else 'files'}."
+            )
+            short_files = [f.split("/", 1)[1] for f in files[:6]]
+            guide.append({
+                "folder": f"{folder}/",
+                "file_count": len(files),
+                "role": role,
+                "key_files": short_files,
+            })
+
+        return guide[:10]
+
+    def generate_technical_data(self, repo):
+        data = self.inspect_repository(repo)
+        name = repo.get("name", "Repository")
+        full_name = data["full_name"]
+        description = (repo.get("description") or "").strip()
+        language = repo.get("language") or "Not detected"
+        default_branch = repo.get("default_branch") or "main"
+        is_private = repo.get("private", False)
+        updated_at = repo.get("updated_at") or ""
+
+        paths = data["paths"]
+        readme_text = data["readme_text"]
+        manifest_name = data["manifest_name"]
+        manifest_content = data["manifest_content"]
+        languages_map = data["languages_map"]
+
+        project_kind = self._classify_project_kind(language, paths, manifest_content.lower(), readme_text)
+        clean_overview, feature_bullets = self._parse_readme_human(readme_text)
+        overview_text = description or clean_overview or f"A {project_kind} organized across {len(paths)} files."
+
+        formatted_date = "Unknown"
+        if updated_at:
+            try:
+                formatted_date = datetime.fromisoformat(updated_at.replace("Z", "+00:00")).strftime("%d %b %Y")
+            except ValueError:
+                pass
+
+        return {
+            "name": name,
+            "full_name": full_name,
+            "project_kind": project_kind.capitalize(),
+            "visibility": "Private" if is_private else "Public",
+            "default_branch": default_branch,
+            "last_updated": formatted_date,
+            "total_files": len(paths),
+            "overview": overview_text,
+            "highlights": feature_bullets,
+            "language_breakdown": self._compute_language_percentages(languages_map, paths, language),
+            "entry_points": self._detect_entry_points(paths),
+            "dependencies": self._extract_dependencies(manifest_name, manifest_content, readme_text),
+            "manifest_name": manifest_name,
+            "module_guide": self._build_module_guide(paths),
+        }
